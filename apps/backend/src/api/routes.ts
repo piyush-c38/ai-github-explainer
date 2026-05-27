@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { handleErrors, ApiError } from '../lib/errors';
 import { analysisService } from '../services/analysis.service';
 import { ragService } from '../services/rag.service';
@@ -7,7 +7,7 @@ const router = Router();
 
 router.post(
   '/repo',
-  handleErrors(async (req, res) => {
+  handleErrors(async (req: Request, res: Response) => {
     const { url } = req.body;
     if (!url) {
       throw new ApiError(400, 'Repository URL is required');
@@ -19,7 +19,7 @@ router.post(
 
 router.post(
   '/chat',
-  handleErrors(async (req, res) => {
+  handleErrors(async (req: Request, res: Response) => {
     const { query, collectionName } = req.body;
     if (!query || !collectionName) {
       throw new ApiError(400, 'Query and collectionName are required');

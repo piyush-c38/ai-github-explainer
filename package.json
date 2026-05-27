@@ -12,6 +12,7 @@
     "lint": "turbo run lint"
   },
   "devDependencies": {
-    "turbo": "latest"
-  }
+    "turbo": "^2.9.15"
+  },
+  "packageManager": "npm@11.13.0"
 }
