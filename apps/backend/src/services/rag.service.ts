@@ -19,7 +19,8 @@ class RagService {
       const queryEmbedding = await embeddingService.generateEmbeddings(query);
       const contextResults = await vectorService.query(collectionName, queryEmbedding);
 
-      const context = contextResults.metadatas[0]?.map((meta: any) => meta.content).join('\n\n');
+      const contextDocuments = contextResults.documents?.[0] || [];
+      const context = contextDocuments.join('\n\n');
 
       const prompt = `
         Context:

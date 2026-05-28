@@ -83,9 +83,9 @@ class AnalysisService {
       const documents = embeddings.map((emb, index) => ({
         id: `${emb.filePath}-${index}`,
         embedding: emb.embedding,
+        document: emb.content,
         metadata: {
           filePath: emb.filePath,
-          content: emb.content,
         },
       }));
 

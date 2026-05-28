@@ -26,7 +26,11 @@ class EmbeddingService {
   async generateEmbeddingsForFiles(filePaths: string[]): Promise<{ filePath: string; content: string; embedding: number[] }[]> {
     const embeddings = [];
     for (const filePath of filePaths) {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const rawContent = fs.readFileSync(filePath, 'utf-8');
+      if (rawContent.includes('\u0000')) {
+        continue;
+      }
+      const content = this.sanitizeText(rawContent);
       // Simple chunking for now
       const chunks = this.chunkText(content);
       for (const chunk of chunks) {
@@ -35,6 +39,16 @@ class EmbeddingService {
       }
     }
     return embeddings;
+  }
+
+  private sanitizeText(text: string): string {
+    const withoutControls = text.replace(
+      /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,
+      ''
+    );
+
+    const escapedBackslashes = withoutControls.replace(/\\/g, '\\\\');
+    return escapedBackslashes.replace(/\\x[0-9A-Fa-f]{0,2}/g, '');
   }
 
   private chunkText(text: string, chunkSize = 512, overlap = 50): string[] {

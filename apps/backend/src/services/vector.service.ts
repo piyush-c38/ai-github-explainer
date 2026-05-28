@@ -1,12 +1,16 @@
 import { ChromaClient, Collection } from 'chromadb';
 import { ApiError } from '../lib/errors';
+import config from '../config';
 
 class VectorService {
   private client: ChromaClient;
   private collection: Collection | null = null;
 
   constructor() {
-    this.client = new ChromaClient();
+    if (!config.chromaUrl) {
+      throw new ApiError(500, 'CHROMA_URL is not configured');
+    }
+    this.client = new ChromaClient({ path: config.chromaUrl });
   }
 
   async getOrCreateCollection(name: string): Promise<Collection> {
@@ -21,7 +25,7 @@ class VectorService {
 
   async addDocuments(
     collectionName: string,
-    documents: { id: string; embedding: number[]; metadata: any }[]
+    documents: { id: string; embedding: number[]; document: string; metadata: any }[]
   ) {
     if (!this.collection || this.collection.name !== collectionName) {
       this.collection = await this.getOrCreateCollection(collectionName);
@@ -29,12 +33,14 @@ class VectorService {
 
     const ids = documents.map(doc => doc.id);
     const embeddings = documents.map(doc => doc.embedding);
+    const texts = documents.map(doc => doc.document);
     const metadatas = documents.map(doc => doc.metadata);
 
     try {
       await this.collection.add({
         ids,
         embeddings,
+        documents: texts,
         metadatas,
       });
     } catch (error) {
