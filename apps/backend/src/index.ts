@@ -1,6 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { ApiError, handleErrors } from './lib/errors';
-import apiRoutes from './api/routes';
+import apiRoutes from './api/routes/index';
 import config from './config';
 
 const app: Express = express();

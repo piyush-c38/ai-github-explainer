@@ -20,7 +20,7 @@ export default function Home() {
       const response = await fetch(`/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: repoUrl }),
+        body: JSON.stringify({ repoUrl: repoUrl }),
       });
 
       if (!response.ok) {
