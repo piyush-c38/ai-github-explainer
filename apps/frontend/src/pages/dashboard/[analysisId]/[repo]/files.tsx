@@ -16,9 +16,8 @@ export default function FilesPage() {
   );
 
   const graphData = useMemo(() => {
-    if (!analysisData?.analysis?.files) return { nodes: [], edges: [] };
-    const filePaths = analysisData.analysis.files.map((f: any) => f.path);
-    return createFileTreeGraph(filePaths);
+    if (!analysisData?.files) return { nodes: [], edges: [] };
+    return createFileTreeGraph(analysisData.files);
   }, [analysisData]);
 
   if (analysisError) return <DashboardLayout><div>Failed to load analysis.</div></DashboardLayout>;

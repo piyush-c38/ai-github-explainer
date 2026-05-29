@@ -16,8 +16,8 @@ export default function ComponentsPage() {
   );
 
   const graphData = useMemo(() => {
-    if (!analysisData?.analysis?.parsedData) return { nodes: [], edges: [] };
-    return createComponentRelationshipGraph(analysisData.analysis.parsedData);
+    if (!analysisData?.parsedData) return { nodes: [], edges: [] };
+    return createComponentRelationshipGraph(analysisData.parsedData);
   }, [analysisData]);
 
   if (analysisError) return <DashboardLayout><div>Failed to load analysis.</div></DashboardLayout>;

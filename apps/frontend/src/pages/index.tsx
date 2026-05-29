@@ -12,7 +12,7 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!repoUrl) return;
-
+    console.log('Submitting repo URL:', repoUrl);
     setIsLoading(true);
     setError(null);
 

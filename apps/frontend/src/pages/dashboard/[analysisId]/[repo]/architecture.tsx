@@ -1,21 +1,27 @@
+import { useRouter } from 'next/router';
+import useSWR from 'swr';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MermaidRenderer from '@/components/visualization/MermaidRenderer';
-
-const architectureGraph = `
-graph TD
-    A[Client] --> B{Next.js Frontend};
-    B --> C{API Routes};
-    C --> D[Express Backend];
-    D --> E[Analysis Service];
-    E --> F[Git Service];
-    E --> G[Parser Service];
-    G --> H[Tree-sitter];
-    D --> I[RAG Service];
-    I --> J[ChromaDB];
-    I --> K[Groq API];
-`;
+import { fetcher } from '@/lib/api';
+import { createArchitectureMermaid } from '@/lib/graph-utils';
 
 export default function ArchitecturePage() {
+  const router = useRouter();
+  const { analysisId } = router.query;
+
+  const { data, error } = useSWR(analysisId ? `/api/analysis/${analysisId}` : null, fetcher);
+
+  if (error) return <DashboardLayout><div>Failed to load analysis.</div></DashboardLayout>;
+  if (!data) return <DashboardLayout><div>Loading...</div></DashboardLayout>;
+  if (data.status !== 'completed') {
+    return <DashboardLayout><div>Analysis in progress: {data.status}</div></DashboardLayout>;
+  }
+  if (!data.repoUrl || !data.files) {
+    return <DashboardLayout><div>Analysis data is incomplete.</div></DashboardLayout>;
+  }
+
+  const architectureGraph = createArchitectureMermaid(data.repoUrl, data.files);
+
   return (
     <DashboardLayout>
       <h1 className="text-3xl font-bold text-primary mb-4">Architecture Overview</h1>

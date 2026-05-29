@@ -14,14 +14,29 @@ interface FileTreeItem {
 }
 
 export const createFileTreeGraph = (filePaths: string[]) => {
+  const items = new Map<string, FileTreeItem>();
+  const ensurePath = (pathValue: string) => {
+    if (!pathValue) return;
+    if (!items.has(pathValue)) {
+      items.set(pathValue, {
+        path: pathValue,
+        name: pathValue.substring(pathValue.lastIndexOf('/') + 1) || pathValue,
+      });
+    }
+    const parent = pathValue.substring(0, pathValue.lastIndexOf('/'));
+    if (parent) {
+      ensurePath(parent);
+    }
+  };
+
+  filePaths.forEach((pathValue) => ensurePath(pathValue));
+
   const hierarchy = stratify<FileTreeItem>()
     .id((d) => d.path)
-    .parentId((d) => d.path.substring(0, d.path.lastIndexOf('/')))(
-      filePaths.map((path) => ({
-        path,
-        name: path.substring(path.lastIndexOf('/') + 1),
-      }))
-    );
+    .parentId((d) => {
+      const parent = d.path.substring(0, d.path.lastIndexOf('/'));
+      return parent || null;
+    })(Array.from(items.values()));
 
   const layout = tree<FileTreeItem>().nodeSize([200, 150]);
   const root = layout(hierarchy);
@@ -131,4 +146,58 @@ export const createComponentRelationshipGraph = (parsedData: any[]) => {
     });
 
     return { nodes, edges };
+};
+
+const sanitizeMermaidId = (value: string) => value.replace(/[^a-zA-Z0-9_]/g, '_');
+
+export const createArchitectureMermaid = (repoUrl: string, files: string[]) => {
+  const topLevelCounts = new Map<string, number>();
+  files.forEach((filePath) => {
+    const normalized = filePath.replace(/^[A-Za-z]:/g, '');
+    const parts = normalized.split('/').filter(Boolean);
+    const top = parts.length > 0 ? parts[0] : 'root';
+    topLevelCounts.set(top, (topLevelCounts.get(top) || 0) + 1);
+  });
+
+  const repoLabel = repoUrl || 'repository';
+  const repoId = sanitizeMermaidId(repoLabel);
+  const lines = [`graph TD`, `${repoId}["${repoLabel}"]`];
+
+  Array.from(topLevelCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .forEach(([folder, count]) => {
+      const nodeId = sanitizeMermaidId(folder);
+      lines.push(`${nodeId}["${folder} (${count})"]`);
+      lines.push(`${repoId} --> ${nodeId}`);
+    });
+
+  return lines.join('\n');
+};
+
+export const createFlowMermaid = (parsedData: any[]) => {
+  const edges = new Set<string>();
+  const nodes = new Set<string>();
+
+  parsedData.forEach((file) => {
+    if (!file?.filePath || !Array.isArray(file.dependencies)) return;
+    const from = sanitizeMermaidId(file.filePath);
+    nodes.add(from);
+    file.dependencies.slice(0, 10).forEach((dep: string) => {
+      const to = sanitizeMermaidId(dep);
+      nodes.add(to);
+      edges.add(`${from} --> ${to}`);
+    });
+  });
+
+  const lines = ['graph LR'];
+  Array.from(nodes).slice(0, 50).forEach((nodeId) => {
+    lines.push(`${nodeId}["${nodeId}"]`);
+  });
+
+  Array.from(edges).slice(0, 80).forEach((edge) => {
+    lines.push(edge);
+  });
+
+  return lines.join('\n');
 };

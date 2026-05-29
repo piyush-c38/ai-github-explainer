@@ -6,16 +6,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { url } = req.body;
-  if (!url) {
+  const { repoUrl } = req.body;
+  if (!repoUrl) {
     return res.status(400).json({ message: 'Repository URL is required' });
   }
 
   try {
-    const backendResponse = await fetch('http://localhost:3001/api/repo', {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:3001';
+    const backendResponse = await fetch(`${backendUrl}/api/repo/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ repoUrl }),
     });
 
     if (!backendResponse.ok) {

@@ -16,12 +16,20 @@ export default function DependenciesPage() {
   );
 
   const graphData = useMemo(() => {
-    if (!analysisData?.analysis?.dependencies) return { nodes: [], edges: [] };
-    
-    const { dependencies, devDependencies } = analysisData.analysis.dependencies;
-    const allDependencies = { ...dependencies, ...devDependencies };
-    
-    return createDependencyGraph(allDependencies, analysisData.analysis.dependencies);
+    if (!analysisData?.dependencies) return { nodes: [], edges: [] };
+
+    const uniqueDeps = new Set<string>();
+    Object.values(analysisData.dependencies as Record<string, string[]>).forEach((deps) => {
+      deps.forEach((dep) => uniqueDeps.add(dep));
+    });
+
+    const dependencyMap: Record<string, string> = {};
+    uniqueDeps.forEach((dep) => {
+      dependencyMap[dep] = 'import';
+    });
+
+    const packageLike = { name: analysisData.repoUrl || 'root' };
+    return createDependencyGraph(dependencyMap, packageLike);
   }, [analysisData]);
 
   if (analysisError) return <DashboardLayout><div>Failed to load analysis.</div></DashboardLayout>;
