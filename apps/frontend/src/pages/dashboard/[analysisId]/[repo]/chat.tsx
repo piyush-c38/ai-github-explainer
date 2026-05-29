@@ -1,22 +1,48 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { motion } from 'framer-motion';
-import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { PageHeader, PageShell } from '@/components/page-header';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/api';
+
+type Msg = { role: 'user' | 'assistant'; content: string };
+
+const sampleQuestions = [
+  'How does the cart state work?',
+  'Where do API calls happen?',
+  'What runs at build time vs runtime?',
+  'Walk me through the main request flow.',
+];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { analysisId } = router.query;
+  const analysisIdParam = Array.isArray(analysisId) ? analysisId[0] : analysisId;
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const { data } = useSWR(
+    analysisIdParam ? `/api/analysis/${analysisIdParam}` : null,
+    fetcher
+  );
 
-    const userMessage = { role: 'user' as const, content: input };
-    setMessages((prev) => [...prev, userMessage]);
+  useEffect(() => {
+    if (!analysisIdParam || messages.length > 0 || !data?.repoUrl) return;
+    const repoName = data.repoUrl.replace('https://github.com/', '');
+    setMessages([
+      {
+        role: 'assistant',
+        content: `Hi! I've indexed ${repoName}. Ask me about architecture, files, dependencies, or how a feature flows through the codebase.`,
+      },
+    ]);
+  }, [analysisIdParam, data?.repoUrl, messages.length]);
+
+  const send = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    if (!analysisIdParam) return;
+
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     setIsLoading(true);
 
@@ -24,12 +50,12 @@ export default function ChatPage() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisId, query: input }),
+        body: JSON.stringify({ analysisId: analysisIdParam, query: text }),
       });
       const data = await response.json();
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: data.reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (error) {
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: 'Sorry, something went wrong.' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Sorry, something went wrong.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -37,54 +63,88 @@ export default function ChatPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-primary mb-4">Chat with the repo</h1>
-        <div className="flex-1 overflow-y-auto bg-surface-1 p-4 rounded-lg border border-outline mb-4">
-          <div className="space-y-4">
-            {messages.map((msg, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
-              >
-                <div
-                  className={`p-3 rounded-lg max-w-lg ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-surface-2 text-on-surface'
-                  }`}
-                >
-                  {msg.content}
+      <PageShell>
+        <PageHeader
+          eyebrow="AI Chat"
+          title="Ask the repository anything"
+          description="Grounded in the repo's files via RAG."
+        />
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+          <div className="flex h-[600px] flex-col rounded-2xl border border-border bg-card">
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              {messages.map((msg, index) => (
+                <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                  {msg.role === 'assistant' && (
+                    <div
+                      className="grid size-8 shrink-0 place-items-center rounded-lg"
+                      style={{ background: 'var(--gradient-primary)' }}
+                    >
+                      <span className="text-xs text-primary-foreground">AI</span>
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
                 </div>
-              </motion.div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="p-3 rounded-lg bg-surface-2 text-on-surface">Typing...</div>
-              </div>
-            )}
-          </div>
-        </div>
-        <form onSubmit={handleSendMessage}>
-          <div className="flex items-center bg-surface-1 border border-outline rounded-full p-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about the code..."
-              className="w-full px-4 py-2 bg-transparent focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="p-2 bg-primary rounded-full text-on-primary disabled:bg-gray-500"
-              disabled={!input.trim() || isLoading}
+              ))}
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className="grid size-8 place-items-center rounded-lg" style={{ background: 'var(--gradient-primary)' }}>
+                    <span className="text-xs text-primary-foreground">AI</span>
+                  </div>
+                  <div className="rounded-2xl bg-secondary px-4 py-2.5 text-sm text-muted-foreground">
+                    Thinking...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                send(input);
+              }}
+              className="flex gap-2 border-t border-border p-3"
             >
-              <PaperAirplaneIcon className="h-5 w-5" />
-            </button>
+              <input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ask about architecture, files, flows..."
+                className="flex-1 rounded-xl bg-secondary px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={!analysisIdParam}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                disabled={!input.trim() || isLoading || !analysisIdParam}
+              >
+                Send
+              </button>
+            </form>
           </div>
-        </form>
-      </div>
+
+          <aside className="h-fit space-y-3 rounded-2xl border border-border bg-card p-5">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Try asking</div>
+            {sampleQuestions.map((question) => (
+              <button
+                key={question}
+                onClick={() => send(question)}
+                className="w-full rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-left text-sm transition hover:bg-secondary"
+                disabled={!analysisIdParam}
+              >
+                {question}
+              </button>
+            ))}
+          </aside>
+        </div>
+      </PageShell>
     </DashboardLayout>
   );
 }

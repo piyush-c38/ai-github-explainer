@@ -1,11 +1,24 @@
 import { ReactNode } from 'react';
-import Sidebar from '@/components/layout/Sidebar';
+import { useRouter } from 'next/router';
+import AppSidebar from '@/components/app-sidebar';
+import MobileTopbar from '@/components/mobile-topbar';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { analysisId, repo } = router.query;
+  const repoParam = typeof repo === 'string' ? repo : '';
+  const pathMatch = router.asPath.match(/\/dashboard\/([^/]+)\/([^/?#]+)/);
+  const resolvedAnalysisId = typeof analysisId === 'string' ? analysisId : pathMatch?.[1];
+  const resolvedRepo = repoParam || pathMatch?.[2] || '';
+  const dashboardHref = resolvedAnalysisId && resolvedRepo ? `/dashboard/${resolvedAnalysisId}/${resolvedRepo}` : undefined;
+
   return (
-    <div className="flex h-screen bg-background text-on-surface">
-      <Sidebar />
-      <main className="flex-1 p-6 sm:p-8 overflow-y-auto">{children}</main>
+    <div className="flex min-h-screen w-full bg-background text-foreground">
+      <AppSidebar />
+      <main className="min-w-0 flex-1">
+        <MobileTopbar dashboardHref={dashboardHref} />
+        {children}
+      </main>
     </div>
   );
 }

@@ -177,23 +177,25 @@ export const createArchitectureMermaid = (repoUrl: string, files: string[]) => {
 
 export const createFlowMermaid = (parsedData: any[]) => {
   const edges = new Set<string>();
-  const nodes = new Set<string>();
+  const labels = new Map<string, string>();
 
   parsedData.forEach((file) => {
     if (!file?.filePath || !Array.isArray(file.dependencies)) return;
     const from = sanitizeMermaidId(file.filePath);
-    nodes.add(from);
+    labels.set(from, file.filePath);
     file.dependencies.slice(0, 10).forEach((dep: string) => {
       const to = sanitizeMermaidId(dep);
-      nodes.add(to);
+      labels.set(to, dep);
       edges.add(`${from} --> ${to}`);
     });
   });
 
   const lines = ['graph LR'];
-  Array.from(nodes).slice(0, 50).forEach((nodeId) => {
-    lines.push(`${nodeId}["${nodeId}"]`);
-  });
+  Array.from(labels.entries())
+    .slice(0, 50)
+    .forEach(([nodeId, label]) => {
+      lines.push(`${nodeId}["${label}"]`);
+    });
 
   Array.from(edges).slice(0, 80).forEach((edge) => {
     lines.push(edge);

@@ -1,86 +1,83 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { encodeRepoPath } from '@/lib/routes';
+import RepoInput from '@/components/repo-input';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Boxes, GitBranch, MessagesSquare, Network, Sparkles, Workflow } from 'lucide-react';
+
+const features = [
+  { icon: GitBranch, title: 'Architecture overview', body: 'High-level system map of the repo.' },
+  { icon: Boxes, title: 'Dependency graph', body: "What's installed, and who uses what." },
+  { icon: Network, title: 'Component relationships', body: 'See how files import each other.' },
+  { icon: Workflow, title: 'Data and request flow', body: 'Trace a request from UI to DB.' },
+  { icon: Sparkles, title: 'Onboarding path', body: 'The 5 files a new contributor should read.' },
+  { icon: MessagesSquare, title: 'Chat with the repo', body: 'Ask anything in plain English.' },
+];
 
 export default function Home() {
-  const [repoUrl, setRepoUrl] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!repoUrl) return;
-    console.log('Submitting repo URL:', repoUrl);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoUrl: repoUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start analysis.');
-      }
-
-      const data = await response.json();
-      const repoPath = repoUrl.replace('https://github.com/', '');
-      const encodedRepo = encodeRepoPath(repoPath);
-      router.push(`/dashboard/${data.analysisId}/${encodedRepo}`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-8"
-      >
-        <h1 className="text-5xl font-bold text-primary mb-4">
-          AI GitHub Repository Explainer
+    <DashboardLayout>
+      <div className="relative min-h-screen">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[520px] opacity-60"
+        style={{
+          background:
+            'radial-gradient(60% 60% at 50% 0%, oklch(0.72 0.16 250 / 0.25) 0%, transparent 60%), radial-gradient(40% 40% at 80% 10%, oklch(0.7 0.18 320 / 0.18) 0%, transparent 70%)',
+        }}
+      />
+      <div className="relative mx-auto max-w-5xl px-5 pb-16 pt-16 text-center md:px-8 md:pt-28">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
+          <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+          AI GitHub Repository Explainer · MVP
+        </div>
+        <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-6xl">
+          Understand any GitHub repo
+          <br />
+          <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'var(--gradient-primary)' }}>
+            in minutes, not weekends.
+          </span>
         </h1>
-        <p className="text-lg text-on-surface-variant">
-          Get a deep understanding of any public GitHub repository.
+        <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">
+          Paste a repo URL. Get an architecture map, dependency graph, important files, code flow,
+          and a chat that knows the codebase.
         </p>
-      </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="w-full max-w-2xl"
-      >
-        <form onSubmit={handleSubmit} className="w-full">
-          <div className="flex items-center bg-surface-1 border border-outline rounded-full shadow-lg overflow-hidden p-2">
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/owner/repo"
-              className="w-full px-4 py-2 bg-transparent focus:outline-none text-on-surface"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              className="px-6 py-2 bg-primary text-on-primary font-semibold rounded-full hover:bg-blue-500 transition-colors duration-300 disabled:bg-gray-500"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Analyzing...' : 'Analyze'}
-            </button>
-          </div>
-        </form>
-        {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
-      </motion.div>
+        <div className="mx-auto mt-10 max-w-2xl">
+          <RepoInput autoFocus />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+          <span>Try:</span>
+          {['vercel/next.js', 'shadcn-ui/ui', 'facebook/react'].map((repo) => (
+            <span key={repo} className="rounded-full border border-border bg-card px-2.5 py-1">
+              {repo}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <section className="mx-auto max-w-7xl px-5 pb-24 md:px-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <div
+                key={feature.title}
+                className="group rounded-2xl border border-border bg-card/60 p-5 transition-colors hover:bg-card"
+              >
+                <div className="mb-4 grid size-10 place-items-center rounded-xl" style={{ background: 'var(--gradient-primary)' }}>
+                  <Icon className="size-5 text-primary-foreground" />
+                </div>
+                <h3 className="font-medium">{feature.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{feature.body}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-12 text-center text-sm text-muted-foreground">
+          Paste a repo URL above to begin.
+        </div>
+      </section>
     </div>
+    </DashboardLayout>
   );
 }

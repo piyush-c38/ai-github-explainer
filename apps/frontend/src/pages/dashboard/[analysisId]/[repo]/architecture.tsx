@@ -1,7 +1,8 @@
 import { useRouter } from 'next/router';
 import useSWR from 'swr';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import MermaidRenderer from '@/components/visualization/MermaidRenderer';
+import MermaidDiagram from '@/components/mermaid-diagram';
+import { PageHeader, PageShell } from '@/components/page-header';
 import { fetcher } from '@/lib/api';
 import { createArchitectureMermaid } from '@/lib/graph-utils';
 
@@ -11,23 +12,40 @@ export default function ArchitecturePage() {
 
   const { data, error } = useSWR(analysisId ? `/api/analysis/${analysisId}` : null, fetcher);
 
-  if (error) return <DashboardLayout><div>Failed to load analysis.</div></DashboardLayout>;
-  if (!data) return <DashboardLayout><div>Loading...</div></DashboardLayout>;
+  if (error) return <DashboardLayout><PageShell>Failed to load analysis.</PageShell></DashboardLayout>;
+  if (!data) return <DashboardLayout><PageShell>Loading...</PageShell></DashboardLayout>;
   if (data.status !== 'completed') {
-    return <DashboardLayout><div>Analysis in progress: {data.status}</div></DashboardLayout>;
+    return <DashboardLayout><PageShell>Analysis in progress: {data.status}</PageShell></DashboardLayout>;
   }
   if (!data.repoUrl || !data.files) {
-    return <DashboardLayout><div>Analysis data is incomplete.</div></DashboardLayout>;
+    return <DashboardLayout><PageShell>Analysis data is incomplete.</PageShell></DashboardLayout>;
   }
 
-  const architectureGraph = createArchitectureMermaid(data.repoUrl, data.files);
+  const prefix = data.files.reduce((acc: string, current: string) => {
+    if (!acc) return current;
+    let i = 0;
+    while (i < acc.length && i < current.length && acc[i] === current[i]) i += 1;
+    return acc.slice(0, i);
+  }, '');
+
+  const relativeFiles = data.files.map((pathValue: string) =>
+    pathValue.replace(prefix, '').replace(/^\//, '')
+  );
+
+  const architectureGraph = createArchitectureMermaid(data.repoUrl, relativeFiles);
 
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-primary mb-4">Architecture Overview</h1>
-      <div className="h-[calc(100vh-10rem)] bg-surface-1 p-4 rounded-lg border border-outline">
-        <MermaidRenderer chart={architectureGraph} />
-      </div>
+      <PageShell>
+        <PageHeader
+          eyebrow="Visualization"
+          title="Architecture overview"
+          description="High-level system map inferred from repo structure."
+        />
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <MermaidDiagram chart={architectureGraph} />
+        </div>
+      </PageShell>
     </DashboardLayout>
   );
 }
