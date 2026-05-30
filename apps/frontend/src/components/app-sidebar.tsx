@@ -35,9 +35,9 @@ const groups: { label: string; items: SidebarItem[] }[] = [
     items: [
       { id: 'structure', label: 'Folder Structure', icon: FolderTree },
       { id: 'dependencies', label: 'Dependencies', icon: Boxes },
-      { id: 'components', label: 'Components', icon: Network },
-      { id: 'flow', label: 'Data Flow', icon: Workflow },
-      { id: 'architecture', label: 'Architecture', icon: GitBranch },
+      // { id: 'components', label: 'Components', icon: Network },
+      // { id: 'flow', label: 'Data Flow', icon: Workflow },
+      // { id: 'architecture', label: 'Architecture', icon: GitBranch },
     ],
   },
 ] as const;

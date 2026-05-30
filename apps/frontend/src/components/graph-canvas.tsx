@@ -1,4 +1,5 @@
-import ReactFlow, { Background, Controls, MiniMap, type Edge, type Node } from 'reactflow';
+import { useMemo } from 'react';
+import ReactFlow, { Background, Controls, MiniMap, getNodesBounds, getViewportForBounds, type Edge, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 interface Props {
@@ -8,12 +9,26 @@ interface Props {
 }
 
 export function GraphCanvas({ nodes, edges, height = 520 }: Props) {
+  const defaultViewport = useMemo(() => {
+    if (nodes.length === 0) {
+      return { x: 0, y: 0, zoom: 1 };
+    }
+
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, 1000, height, 0.15, 0.5, 1.5);
+
+    return {
+      ...viewport,
+      y: viewport.y,
+    };
+  }, [height, nodes]);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ height }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        fitView
+        defaultViewport={defaultViewport}
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           animated: true,
