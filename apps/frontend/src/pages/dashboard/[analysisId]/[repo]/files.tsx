@@ -171,13 +171,7 @@ export default function FilesPage() {
                 </h2>
 
                 {fileLoading && <div className="mt-5 text-sm text-muted-foreground">Loading file...</div>}
-                {fileError && <div className="mt-5 text-sm text-destructive">{fileError}</div>}
-
-                {/* {!fileLoading && !fileError && fileContent !== null && (
-                  <pre className="mt-5  overflow-x-auto max-w-full rounded-xl border border-border bg-secondary/50 p-4 text-sm">
-                    <code className="block w-full whitespace-pre text-sm">{fileContent}</code>
-                  </pre>
-                )} */}
+                {fileError && <div className="mt-5 text-sm text-destructive">{fileError}</div>} 
 
                 {!fileLoading && !fileError && fileContent !== null && (
                   <div className='relative -top-5'>

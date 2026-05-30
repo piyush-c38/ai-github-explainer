@@ -13,7 +13,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const groups = [
+type SidebarItem = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href?: string;
+};
+
+const groups: { label: string; items: SidebarItem[] }[] = [
   {
     label: 'Overview',
     items: [
@@ -49,7 +56,7 @@ export default function AppSidebar() {
       <div className="border-b border-sidebar-border px-5 py-5">
         <Link href="/" className="group flex items-center gap-2.5">
           <div
-            className="grid size-9 place-items-center rounded-xl shadow-[var(--shadow-glow)]"
+            className="grid size-9 place-items-center rounded-xl shadow-(--shadow-glow)"
             style={{ background: 'var(--gradient-primary)' }}
           >
             <GitFork className="size-5 text-primary-foreground" />
