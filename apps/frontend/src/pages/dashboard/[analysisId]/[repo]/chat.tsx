@@ -4,15 +4,98 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageHeader, PageShell } from '@/components/page-header';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
-const sampleQuestions = [
-  'How does the cart state work?',
-  'Where do API calls happen?',
-  'What runs at build time vs runtime?',
-  'Walk me through the main request flow.',
-];
+type AnalysisData = {
+  repoUrl?: string;
+  files?: string[];
+  packageJson?: {
+    scripts?: Record<string, string>;
+    dependencies?: Record<string, string>;
+  };
+  repoMetadata?: {
+    techStack?: string[];
+  };
+};
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => <h1 className="mb-2 text-base font-semibold text-foreground">{children}</h1>,
+        h2: ({ children }) => <h2 className="mb-2 text-sm font-semibold text-foreground">{children}</h2>,
+        h3: ({ children }) => <h3 className="mb-1.5 text-sm font-semibold text-foreground">{children}</h3>,
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+        a: ({ children, href }) => (
+          <a href={href} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+            {children}
+          </a>
+        ),
+        code: ({ className, children, ...props }) => {
+          const isInline = !className;
+          if (isInline) {
+            return (
+              <code className="rounded bg-background/80 px-1.5 py-0.5 text-[0.85em] text-foreground" {...props}>
+                {children}
+              </code>
+            );
+          }
+
+          return (
+            <pre className="mb-2 overflow-x-auto rounded-xl border border-border bg-background/80 p-3 text-xs text-foreground last:mb-0">
+              <code className={className} {...props}>
+                {children}
+              </code>
+            </pre>
+          );
+        },
+        blockquote: ({ children }) => (
+          <blockquote className="mb-2 border-l-2 border-border pl-3 text-muted-foreground last:mb-0">{children}</blockquote>
+        ),
+        hr: () => <hr className="my-3 border-border" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+function buildSampleQuestions(data?: AnalysisData): string[] {
+  const repoName = 'this repository';
+  const firstTech = data?.repoMetadata?.techStack?.[0];
+  const depNames = Object.keys(data?.packageJson?.dependencies || {});
+  const topDependency = depNames[0];
+  const hasBuildScript = Boolean(data?.packageJson?.scripts?.build);
+  const hasTestScript = Boolean(data?.packageJson?.scripts?.test);
+  const firstFile = data?.files?.[0]?.split('/').pop();
+
+  const questions = [
+    `Walk me through the architecture of ${repoName}.`,
+    firstTech
+      ? `How is ${firstTech} used across the codebase?`
+      : 'What are the key modules and how do they interact?',
+    topDependency
+      ? `Where is ${topDependency} used and why was it chosen?`
+      : 'Which dependencies are most important and where are they used?',
+    hasBuildScript
+      ? 'What runs during build time vs runtime in this repo?'
+      : hasTestScript
+        ? 'How is testing set up and where are the main tests?'
+        : firstFile
+          ? `Start from ${firstFile} and explain the main request flow.`
+          : 'Explain the main request flow from entry point to output.',
+  ];
+
+  return questions.slice(0, 4);
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -22,10 +105,12 @@ export default function ChatPage() {
   const { analysisId } = router.query;
   const analysisIdParam = Array.isArray(analysisId) ? analysisId[0] : analysisId;
 
-  const { data } = useSWR(
+  const { data } = useSWR<AnalysisData>(
     analysisIdParam ? `/api/analysis/${analysisIdParam}` : null,
     fetcher
   );
+
+  const sampleQuestions = buildSampleQuestions(data);
 
   useEffect(() => {
     if (!analysisIdParam || messages.length > 0 || !data?.repoUrl) return;
@@ -71,7 +156,7 @@ export default function ChatPage() {
         />
 
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-          <div className="flex h-[600px] flex-col rounded-2xl border border-border bg-card">
+          <div className="flex h-150 flex-col rounded-2xl border border-border bg-card">
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
               {messages.map((msg, index) => (
                 <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -90,7 +175,7 @@ export default function ChatPage() {
                         : 'bg-secondary text-secondary-foreground'
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? <MarkdownMessage content={msg.content} /> : msg.content}
                   </div>
                 </div>
               ))}
