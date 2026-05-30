@@ -72,8 +72,8 @@ export default function AppSidebar() {
                 const href = item.href
                   ? item.href
                   : basePath
-                  ? `${basePath}/${item.id === 'dashboard' ? '' : item.id}`.replace(/\/$/, '')
-                  : '';
+                    ? `${basePath}/${item.id === 'dashboard' ? '' : item.id}`.replace(/\/$/, '')
+                    : '';
                 const active = href && router.asPath === href;
                 const Icon = item.icon;
                 return (
