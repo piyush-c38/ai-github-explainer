@@ -66,43 +66,67 @@ export const createFileTreeGraph = (filePaths: string[]) => {
 };
 
 export const createDependencyGraph = (dependencies: { [key: string]: string }, packageJson: any) => {
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-    const centerNodeId = packageJson.name || 'root';
+  const declaredDependencies = getDeclaredPackageDependencies(packageJson, dependencies);
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  const centerNodeId = packageJson?.name || 'root';
 
-    // Add the root package node
-    nodes.push({
-        id: centerNodeId,
-        position: { x: 0, y: 0 },
-        data: { label: centerNodeId, type: 'root' },
-        type: 'custom',
-    });
+  nodes.push({
+    id: centerNodeId,
+    position: { x: 0, y: 0 },
+    data: { label: centerNodeId, type: 'root' },
+    type: 'custom',
+  });
 
-    const depKeys = Object.keys(dependencies);
-    const angleStep = (2 * Math.PI) / depKeys.length;
-    const radius = 400;
-
-    depKeys.forEach((dep, i) => {
-        const angle = i * angleStep;
-        const x = radius * Math.cos(angle);
-        const y = radius * Math.sin(angle);
-
-        nodes.push({
-            id: dep,
-            position: { x, y },
-            data: { label: `${dep}@${dependencies[dep]}`, type: 'dependency' },
-            type: 'custom',
-        });
-
-        edges.push({
-            id: `${centerNodeId}-${dep}`,
-            source: centerNodeId,
-            target: dep,
-            type: 'smoothstep',
-        });
-    });
-
+  const depKeys = Object.keys(declaredDependencies);
+  if (depKeys.length === 0) {
     return { nodes, edges };
+  }
+
+  const angleStep = (2 * Math.PI) / depKeys.length;
+  const radius = 400;
+
+  depKeys.forEach((dep, i) => {
+    const angle = i * angleStep;
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
+
+    nodes.push({
+      id: dep,
+      position: { x, y },
+      data: { label: `${dep}@${declaredDependencies[dep]}`, type: 'dependency' },
+      type: 'custom',
+    });
+
+    edges.push({
+      id: `${centerNodeId}-${dep}`,
+      source: centerNodeId,
+      target: dep,
+      type: 'smoothstep',
+    });
+  });
+
+  return { nodes, edges };
+};
+
+export const getDeclaredPackageDependencies = (packageJson: any, fallbackDependencies: { [key: string]: string } = {}) => {
+  const declaredSections = [
+    packageJson?.dependencies,
+    packageJson?.devDependencies,
+    packageJson?.peerDependencies,
+    packageJson?.optionalDependencies,
+  ];
+
+  const fromPackageJson = declaredSections.reduce((acc, section) => {
+    if (!section || typeof section !== 'object') return acc;
+    return { ...acc, ...section };
+  }, {} as Record<string, string>);
+
+  if (Object.keys(fromPackageJson).length > 0) {
+    return fromPackageJson;
+  }
+
+  return fallbackDependencies;
 };
 
 export const createComponentRelationshipGraph = (parsedData: any[]) => {

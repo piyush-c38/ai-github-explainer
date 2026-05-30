@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageHeader, PageShell } from '@/components/page-header';
 import { fetcher } from '@/lib/api';
+import { getDeclaredPackageDependencies } from '@/lib/graph-utils';
 import { Boxes, FileCode2, GitFork, Star } from 'lucide-react';
 
 function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
@@ -34,24 +35,24 @@ export default function DashboardPage() {
   }, [data?.repoUrl]);
 
   const dependenciesList = useMemo(() => {
-    if (!data?.dependencies) return [] as string[];
-    const unique = new Set<string>();
-    Object.values(data.dependencies as Record<string, string[]>).forEach((deps) => {
-      deps.forEach((dep) => unique.add(dep));
-    });
-    return Array.from(unique).slice(0, 12);
-  }, [data?.dependencies]);
+    const declaredDependencies = getDeclaredPackageDependencies(
+      data?.packageJson,
+      data?.dependencies as Record<string, string>
+    );
+
+    return Object.keys(declaredDependencies).slice(0, 12);
+  }, [data?.dependencies, data?.packageJson]);
 
   const onboardingFiles = useMemo(() => {
     if (!data?.files) return [] as string[];
-    const prefix = data.files.reduce((acc: string, current: string) => {
+    const prefix = (data.files as string[]).reduce((acc: string, current: string) => {
       if (!acc) return current;
       let i = 0;
       while (i < acc.length && i < current.length && acc[i] === current[i]) i += 1;
       return acc.slice(0, i);
     }, '');
 
-    return data.files
+    return (data.files as string[])
       .map((pathValue: string) => pathValue.replace(prefix, '').replace(/^\//, ''))
       .slice(0, 5);
   }, [data?.files]);
@@ -61,7 +62,7 @@ export default function DashboardPage() {
   if (data.status !== 'completed') {
     return <DashboardLayout><PageShell>Analysis in progress: {data.status}</PageShell></DashboardLayout>;
   }
-  if (!data.repoUrl || !data.files || !data.dependencies) {
+  if (!data.repoUrl || !data.files) {
     return <DashboardLayout><PageShell>Analysis data is incomplete.</PageShell></DashboardLayout>;
   }
 
@@ -118,7 +119,7 @@ export default function DashboardPage() {
             <h2 className="mb-4 font-semibold">Tech stack</h2>
             <div className="flex flex-wrap gap-2">
               {dependenciesList.length === 0 ? (
-                <span className="text-sm text-muted-foreground">No dependencies detected.</span>
+                <span className="text-sm text-muted-foreground">No package.json dependencies detected.</span>
               ) : (
                 dependenciesList.map((dep) => (
                   <span key={dep} className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">

@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageHeader, PageShell } from '@/components/page-header';
 import { GraphCanvas, nodeStyle, nodeStylePrimary } from '@/components/graph-canvas';
 import { fetcher } from '@/lib/api';
+import { createDependencyGraph, getDeclaredPackageDependencies } from '@/lib/graph-utils';
 import type { Edge, Node } from 'reactflow';
 
 export default function DependenciesPage() {
@@ -17,42 +18,27 @@ export default function DependenciesPage() {
   );
 
   const { nodes, edges, list } = useMemo(() => {
-    if (!analysisData?.dependencies) {
+    const declaredDependencies = getDeclaredPackageDependencies(
+      analysisData?.packageJson,
+      analysisData?.dependencies as Record<string, string>
+    );
+
+    if (Object.keys(declaredDependencies).length === 0) {
       return { nodes: [] as Node[], edges: [] as Edge[], list: [] as string[] };
     }
 
-    const uniqueDeps = new Set<string>();
-    Object.values(analysisData.dependencies as Record<string, string[]>).forEach((deps) => {
-      deps.forEach((dep) => uniqueDeps.add(dep));
-    });
+    const { nodes: graphNodes, edges: graphEdges } = createDependencyGraph(
+      declaredDependencies,
+      analysisData.packageJson
+    );
 
-    const deps = Array.from(uniqueDeps);
-    const centerId = 'root';
-    const centerNode: Node = {
-      id: centerId,
-      position: { x: 0, y: 0 },
-      data: { label: 'Dependencies' },
-      style: nodeStylePrimary,
-    };
+    const deps = Object.keys(declaredDependencies);
+    const nodes = graphNodes.map((node, index) => ({
+      ...node,
+      style: index === 0 ? nodeStylePrimary : nodeStyle,
+    }));
 
-    const radius = 260;
-    const depNodes = deps.map((dep, index) => {
-      const angle = (index / Math.max(deps.length, 1)) * Math.PI * 2;
-      return {
-        id: dep,
-        position: { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius },
-        data: { label: dep },
-        style: nodeStyle,
-      } as Node;
-    });
-
-    const depEdges = deps.map((dep) => ({
-      id: `${centerId}-${dep}`,
-      source: centerId,
-      target: dep,
-    })) as Edge[];
-
-    return { nodes: [centerNode, ...depNodes], edges: depEdges, list: deps };
+    return { nodes, edges: graphEdges, list: deps };
   }, [analysisData]);
 
   if (analysisError) return <DashboardLayout><PageShell>Failed to load analysis.</PageShell></DashboardLayout>;
@@ -67,7 +53,7 @@ export default function DependenciesPage() {
         <PageHeader
           eyebrow="Visualization"
           title="Dependency graph"
-          description="Dependencies inferred from import statements."
+          description="Dependencies declared in the analyzed repo's package.json."
         />
         <GraphCanvas nodes={nodes} edges={edges} height={600} />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
